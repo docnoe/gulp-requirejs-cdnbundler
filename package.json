@@ -1,6 +1,7 @@
 {
   "name": "gulp-requirejs-cdnbundler",
   "description": "Gulp plugin: wraps gulp-requirejs, adds ability to emit bundle files and bundle config. Forked from SteveSanderson/gulp-requirejs-bundler",
+  "version": "1.0.0",
   "keywords": [
     "gulpplugin"
   ],
