@@ -5,20 +5,22 @@ var es = require('event-stream'),
     Q = require('q'),
     _ = require('underscore');
 
-module.exports = function(options) {
+module.exports = function(runtimeConfig, optimizerOptions) {
     // First run r.js to produce its default (non-bundle-aware) output. In the process,
     // we capture the list of modules it wrote.
-    var primaryPromise = getRjsOutput(options);
+    optimizerOptions = merge(runtimeConfig, optimizerOptions);
+    var primaryPromise = getRjsOutput(optimizerOptions),
+    emptyPaths = getEmptyPaths(runtimeConfig, optimizerOptions);
 
     // Next, take the above list of modules, and for each configured bundle, write out
     // the bundle's .js file, excluding any modules included in the primary output. In
     // the process, capture the list of modules included in each bundle file.
-    var bundlePromises = _.map(options.bundles || {}, function(bundleModules, bundleName) {
+    var bundlePromises = _.map(optimizerOptions.bundles || {}, function(bundleModules, bundleName) {
             return primaryPromise.then(function(primaryOutput) {
                 return getRjsOutput({
                     out: bundleName + ".js",
-                    baseUrl: options.baseUrl,
-                    paths: options.paths,
+                    baseUrl: optimizerOptions.baseUrl,
+                    paths: optimizerOptions.paths,
                     include: bundleModules,
                     exclude: primaryOutput.modules
                 }, bundleName);
@@ -29,13 +31,14 @@ module.exports = function(options) {
     // concatenating the bundle config (list of modules in each bundle) to the end of the
     // primary file.
     var finalPrimaryPromise = Q.all([primaryPromise].concat(bundlePromises)).then(function(allOutputs) {
+
             var primaryOutput = allOutputs[0],
                 bundleOutputs = allOutputs.slice(1),
                 bundleConfig = _.object(bundleOutputs.map(function(bundleOutput) {
                     return [bundleOutput.itemName, bundleOutput.modules]
                 })),
                 bundleConfigCode = '\nrequire.config('
-                    + JSON.stringify({ bundles: bundleConfig }, true, 2)
+                    + JSON.stringify({ bundles: bundleConfig, paths: emptyPaths }, true, 2)
                     + ');\n';
             return new File({
                 path: primaryOutput.file.path,
@@ -46,6 +49,18 @@ module.exports = function(options) {
     // Convert the N+1 promises (N bundle files, 1 final primary file) into a single stream for gulp to await
     var allFilePromises = pluckPromiseArray(bundlePromises, 'file').concat(finalPrimaryPromise);
     return es.merge.apply(es, allFilePromises.map(promiseToStream));
+}
+
+function getEmptyPaths(runtimeConfig, optimizerOptions) {
+    var empty = {}
+    if(optimizerOptions && optimizerOptions.paths) {
+        _.each(optimizerOptions.paths, function(path, dependencyName){
+            if(path === "empty:" && runtimeConfig.paths[dependencyName]) {
+                empty[dependencyName] = runtimeConfig.paths[dependencyName]
+            }
+        });
+    }
+    return empty;
 }
 
 function promiseToStream(promise) {
@@ -77,10 +92,10 @@ function pluckPromiseArray(promiseArray, propertyName) {
     });
 }
 
-function getRjsOutput(options, itemName) {
+function getRjsOutput(optimizerOptions, itemName) {
     // Capture the list of written modules by adding to an array on each onBuildWrite callback
     var modulesList = [],
-        patchedOptions = merge({}, options, {
+        patchedOptions = merge({}, optimizerOptions, {
             onBuildWrite: function(moduleName, path, contents) {
                 modulesList.push(moduleName);
                 return contents;
