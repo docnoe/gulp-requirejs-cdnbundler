@@ -1,16 +1,15 @@
 {
-  "name": "gulp-requirejs-bundler",
-  "version": "0.1.1",
-  "description": "Gulp plugin: wraps gulp-requirejs, adds ability to emit bundle files and bundle config",
+  "name": "gulp-requirejs-cdnbundler",
+  "description": "Gulp plugin: wraps gulp-requirejs, adds ability to emit bundle files and bundle config. Forked from SteveSanderson/gulp-requirejs-bundler",
   "keywords": [
     "gulpplugin"
   ],
   "author": {
-    "name": "Steven Sanderson",
+    "name": "Johannes Noe",
     "email": "",
-    "url": "https://github.com/SteveSanderson"
+    "url": "https://github.com/docnoe"
   },
-  "repository": "SteveSanderson/gulp-requirejs-bundler",
+  "repository": "docnoe/gulp-requirejs-cdnbundler",
   "engines": {
     "node": ">=0.8.0",
     "npm": ">=1.2.10"
